@@ -1,5 +1,18 @@
 # Changelog
 
+## Next
+
+- Removed deprecated namespaces/function/macros:
+    - Removed `reagent.interop` (macros `$`, `$!`, `unchecked-aget` and `unchecked-aset`)
+- Deprecated functions:
+    - `reagent.core/component-path` (Reason: implementation depends on internal React
+    details and using just Component `displayName` achieves nearly the same)
+    (TODO: Just remove function?)
+- All DOM related functions (notably `render` and `dom-node`) have been removed
+from `reagent.core` namespace and are now only available in `reagent.dom` namespace.
+This is to make non-DOM environments (React-native) first class targets with Reagent,
+as requiring `react-dom` always causes problems in such environments.
+
 ## 0.9.0-rc4 (2019-12-17)
 
 **[compare](https://github.com/reagent-project/reagent/compare/v0.9.0-rc3...v0.9.0-rc4)**
