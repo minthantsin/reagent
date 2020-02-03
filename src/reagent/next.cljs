@@ -1,4 +1,5 @@
 (ns reagent.next
+  "Testing ideas for Reagent Hiccup compiler."
   (:require ["react" :as react]
             [goog.object :as gobj]))
 

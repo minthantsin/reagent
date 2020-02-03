@@ -302,25 +302,31 @@
                     #js {})
         first-child (+ 2 (if has-props 1 0))
         ;; comp/wrap-render
-        c (fn [jsprops]
-            (let [children (.-children jsprops)
-                  children (if (array? children) children #js [children])
-                  ;; comp/static-fns :render
-                  res (if util/*non-reactive*
-                        (apply tag (drop 2 v))
-                        (let [[update-count set-update-count] (react/useState 0)
-                              ;; Create JS object to store Render Atom.
-                              ;; Also mock forceUpdate Component method which is backed by the
-                              ;; state hook.
-                              obj #js {:forceUpdate (fn []
-                                                      (set-update-count (inc update-count)))}]
-                          (ratom/run-in-reaction #(apply tag (drop 2 v)) obj "ratom" batch/queue-render {:no-cache true})))]
-              (as-element res)))
+        reagent-fun-wrapper
+        (fn reagent-fun-wrapper [jsprops]
+          (let [children (.-children jsprops)
+                children (if (array? children) children #js [children])
+                ;; comp/static-fns :render
+                res (if util/*non-reactive*
+                      (apply tag (drop 2 v))
+                      (let [[update-count set-update-count] (react/useState 0)
+                            ;; Create JS object to store Render Atom.
+                            ;; Also mock forceUpdate Component method which is backed by the
+                            ;; state hook.
+                            obj #js {:forceUpdate (fn [] (set-update-count inc))}]
+                        (react/useEffect
+                          (fn []
+                            (fn []
+                              (some-> (gobj/get obj "cljsRatom") ratom/dispose!)))
+                          ;; Only run effect once on mount and unmount
+                          #js [])
+                        (ratom/run-in-reaction #(apply tag (drop 2 v)) obj "cljsRatom" batch/queue-render {:no-cache true})))]
+            (as-element res)))
         args (reduce-kv (fn [a k v]
                           (when (>= k first-child)
                             (.push a (as-element v)))
                           a)
-                        #js [c jsprops]
+                        #js [reagent-fun-wrapper jsprops]
                         v)]
     (.apply react/createElement nil args)))
 

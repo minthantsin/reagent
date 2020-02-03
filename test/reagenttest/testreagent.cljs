@@ -1399,58 +1399,66 @@
           (r/flush)
           (is (= 3 @render)))))))
 
-(deftest functional-component-poc
+;; :< creates functional component for now.
+;; This is for testing only, hopefully functional component
+;; can be the default later.
+(deftest functional-component-poc-simple
   (when r/is-client
-    ;; :< creates functional component for now.
-    ;; This is for testing only, hopefully functional component
-    ;; can be the default later.
-
-    (testing "Simple hiccup render"
-      (let [c (fn [x]
-                [:span "Hello " x])]
+    (let [c (fn [x]
+              [:span "Hello " x])]
         (with-mounted-component [:< c "foo"]
           (fn [c div]
-            (is (found-in #"Hello foo" div))))))
+            (is (nil? c) "Render returns nil for stateless components")
+            (is (found-in #"Hello foo" div)))))))
 
-    (testing "With state hook"
-      (let [;; Probably not the best idea to keep
-            ;; refernce to state hook update fn, but
-            ;; works for testing.
-            set-count! (atom nil)
-            c (fn [x]
-                (let [[c set-count] (react/useState x)]
-                  (reset! set-count! set-count)
-                  [:span "Count " c]))]
-        (with-mounted-component [:< c 5]
-          (fn [c div]
-            (is (= "Count 5" (.-innerText div)))
-            (@set-count! 6)
-            (is (= "Count 6" (.-innerText div)))))))
+(deftest functional-component-poc-state-hook
+  (when r/is-client
+    (let [;; Probably not the best idea to keep
+          ;; refernce to state hook update fn, but
+          ;; works for testing.
+          set-count! (atom nil)
+          c (fn [x]
+              (let [[c set-count] (react/useState x)]
+                (reset! set-count! set-count)
+                [:span "Count " c]))]
+      (with-mounted-component [:< c 5]
+        (fn [c div]
+          (is (nil? c) "Render returns nil for stateless components")
+          (is (= "Count 5" (.-innerText div)))
+          (@set-count! 6)
+          (is (= "Count 6" (.-innerText div))))))))
 
-    (testing "RAtom"
-      (let [count (r/atom 5)
-            c (fn [x]
-                [:span "Count " @count])]
-        (with-mounted-component [:< c 5]
-          (fn [c div]
-            (is (= "Count 5" (.-innerText div)))
-            (reset! count 6)
-            (r/flush)
-            (is (= "Count 6" (.-innerText div)))))))
+(deftest functional-component-poc-ratom
+  (when r/is-client
+    (let [count (r/atom 5)
+          c (fn [x]
+              [:span "Count " @count])]
+      (with-mounted-component [:< c 5]
+        (fn [c div]
+          (is (nil? c) "Render returns nil for stateless components")
+          (is (= "Count 5" (.-innerText div)))
+          (reset! count 6)
+          (r/flush)
+          (is (= "Count 6" (.-innerText div)))
+          ;; TODO: Test that component RAtom is disposed
+          )))))
 
-    (testing "RAtom and state hook"
-      (let [r-count (r/atom 3)
-            set-count! (atom nil)
-            c (fn [x]
-                (let [[c set-count] (react/useState x)]
-                  (reset! set-count! set-count)
-                  [:span "Counts " @r-count " " c]))]
-        (with-mounted-component [:< c 15]
-          (fn [c div]
-            (is (= "Counts 3 15" (.-innerText div)))
-            (reset! r-count 6)
-            (r/flush)
-            (is (= "Counts 6 15" (.-innerText div)))
-            (@set-count! 17)
-            (is (= "Counts 6 17" (.-innerText div)))
-            ))))))
+
+(deftest functional-component-poc-ratom-state-hook
+  (when r/is-client
+    (let [r-count (r/atom 3)
+          set-count! (atom nil)
+          c (fn [x]
+              (let [[c set-count] (react/useState x)]
+                (reset! set-count! set-count)
+                [:span "Counts " @r-count " " c]))]
+      (with-mounted-component [:< c 15]
+        (fn [c div]
+          (is (nil? c) "Render returns nil for stateless components")
+          (is (= "Counts 3 15" (.-innerText div)))
+          (reset! r-count 6)
+          (r/flush)
+          (is (= "Counts 6 15" (.-innerText div)))
+          (@set-count! 17)
+          (is (= "Counts 6 17" (.-innerText div)))
+          )))))
