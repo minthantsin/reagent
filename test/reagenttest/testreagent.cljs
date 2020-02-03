@@ -1436,4 +1436,21 @@
             (is (= "Count 5" (.-innerText div)))
             (reset! count 6)
             (r/flush)
-            (is (= "Count 6" (.-innerText div)))))))))
+            (is (= "Count 6" (.-innerText div)))))))
+
+    (testing "RAtom and state hook"
+      (let [r-count (r/atom 3)
+            set-count! (atom nil)
+            c (fn [x]
+                (let [[c set-count] (react/useState x)]
+                  (reset! set-count! set-count)
+                  [:span "Counts " @r-count " " c]))]
+        (with-mounted-component [:< c 15]
+          (fn [c div]
+            (is (= "Counts 3 15" (.-innerText div)))
+            (reset! r-count 6)
+            (r/flush)
+            (is (= "Counts 6 15" (.-innerText div)))
+            (@set-count! 17)
+            (is (= "Counts 6 17" (.-innerText div)))
+            ))))))
