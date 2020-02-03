@@ -61,5 +61,4 @@
   (-as-element hiccup))
 
 (defn create-compiler [options]
-  (reify Compiler
-    ()))
+  nil)
