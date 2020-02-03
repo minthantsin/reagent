@@ -431,3 +431,52 @@
   (if (react-class? comp)
     comp
     (as-class comp)))
+
+(defonce fun-component-state #js {})
+
+(defn functional-render [jsprops]
+  (let [argv (.-argv jsprops)
+        tag (.-tag jsprops)
+        res (if util/*non-reactive*
+              (apply tag argv)
+              ;; Create persistent ID for each rendered functional component,
+              ;; this is used to store internal Reagent state, like render
+              ;; reaction etc. in a separate store where changes doesn't
+              ;; trigger render.
+              (let [[id _] (react/useState (js/Symbol))
+                    [_ update-count] (react/useState 0)
+                    reagent-state (or (gobj/get fun-component-state id)
+                                      (let [obj #js {:forceUpdate (fn [] (update-count inc))}]
+                                        (gobj/set fun-component-state id obj)
+                                        obj))
+                    rat (.-cljsRatom reagent-state)]
+
+                (react/useEffect
+                  (fn mount []
+                    (fn unmount []
+                      (some-> rat ratom/dispose!)
+                      (gobj/remove fun-component-state id)))
+                  ;; Only run effect once on mount and unmount
+                  #js [])
+
+                (batch/mark-rendered reagent-state)
+
+                ;; Note: it might be possible to mock some React Component
+                ;; methods in the object and use it as *current-component*
+
+                ;; TODO: If return value is ifn?, consider form-2 component.
+
+                (assert-callable tag)
+
+                ;; static-fns :render
+                (if (nil? rat)
+                  (ratom/run-in-reaction
+                    #(apply tag argv)
+                    reagent-state
+                    "cljsRatom"
+                    batch/queue-render
+                    rat-opts)
+                  (._run rat false))))]
+    ;; do-render
+    ;; wrap-render
+    (as-element res)))
