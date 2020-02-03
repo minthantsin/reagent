@@ -7,7 +7,7 @@
             [reagent.dom :as rdom]
             [reagent.dom.server :as server]
             [reagent.impl.component :as comp]
-            [reagenttest.utils :as u :refer [with-mounted-component found-in]]
+            [reagenttest.utils :as u :refer [with-mounted-component]]
             [clojure.string :as string]
             [goog.string :as gstr]
             [goog.object :as gobj]
@@ -43,7 +43,7 @@
       (with-mounted-component [really-simple nil nil]
         (fn [c div]
           (swap! ran inc)
-          (is (found-in #"div in really-simple" div))
+          (is (= "div in really-simple" (.-innerText div)))
           (r/flush)
           (is (= 2 @ran))
           (rdom/force-update-all)
@@ -67,7 +67,7 @@
       (with-mounted-component [comp {:foo "you"} 1]
         (fn [C div]
           (swap! ran inc)
-          (is (found-in #"hi you" div))))
+          (is (= "hi you." (.-innerText div)))))
       (is (= 3 @ran)))))
 
 (deftest test-state-change
@@ -85,17 +85,17 @@
       (with-mounted-component [comp]
         (fn [C div]
           (swap! ran inc)
-          (is (found-in #"hi initial" div))
+          (is (= "hi initial" (.-innerText div)))
 
           (r/replace-state @self {:foo "there"})
           (r/state @self)
 
           (r/flush)
-          (is (found-in #"hi there" div))
+          (is (= "hi there" (.-innerText div)))
 
           (r/set-state @self {:foo "you"})
           (r/flush)
-          (is (found-in #"hi you" div))))
+          (is (= "hi you" (.-innerText div)))))
       (is (= 4 @ran)))))
 
 (deftest test-ratom-change
@@ -108,12 +108,12 @@
           v1 (reaction (swap! v1-ran inc) @val)
           comp (fn []
                  (swap! ran inc)
-                 [:div (str "val " @v1 @val @secval)])]
+                 [:div (str "val " @v1 " " @val " " @secval)])]
       (with-mounted-component [comp]
         (fn [C div]
           (r/flush)
           (is (not= runs (rv/running)))
-          (is (found-in #"val 0" div))
+          (is (= "val 0 0 0" (.-innerText div)))
           (is (= 1 @ran))
 
           (reset! secval 1)
@@ -124,7 +124,7 @@
           (is (= 1 @ran))
           (is (= 1 @v1-ran))
           (r/flush)
-          (is (found-in #"val 1" div))
+          (is (= "val 1 1 0" (.-innerText div)))
           (is (= 2 @ran) "ran once more")
           (is (= 2 @v1-ran))
 
@@ -133,7 +133,7 @@
           (is (= 2 @v1-ran))
           (r/flush)
           (is (= 2 @v1-ran))
-          (is (found-in #"val 1" div))
+          (is (= "val 1 1 0" (.-innerText div)))
           (is (= 2 @ran) "did not run")))
       (is (= runs (rv/running)))
       (is (= 2 @ran)))))
@@ -185,7 +185,7 @@
       (with-mounted-component [really-simple nil nil]
         (fn [c div]
           (swap! ran inc)
-          (is (found-in #"this is foobar" div))))
+          (is (= "this is foobar" (.-innerText div)))))
       (is (= 2 @ran)))))
 
 (deftest should-update-test
@@ -204,7 +204,7 @@
       (with-mounted-component [parent nil nil]
         (fn [c div]
           (is (= 1 @child-ran))
-          (is (found-in #"child-foo" div))
+          (is (= "child-foo" (.-innerText div)))
 
           (reset! child-props {:style {:display :none}})
           (r/flush)
@@ -261,11 +261,11 @@
       (with-mounted-component [really-simple nil nil]
         (fn [c div]
           (is (= 1 @ran))
-          (is (found-in #"state=0" div))
+          (is (= "state=0" (.-innerText div)))
           (reset! state 1)
           (r/flush)
           (is (= 2 @ran))
-          (is (found-in #"state=3" div))))
+          (is (= "state=3" (.-innerText div)))))
       (is (= 2 @ran)))))
 
 (defn as-string [comp]
@@ -393,13 +393,13 @@
       (with-mounted-component [parent]
         (fn [C div]
           (swap! ran inc)
-          (is (found-in #"hi you" div))
+          (is (= "hi you." (.-innerText div)))
           (is (= 1 @top-ran))
           (is (= 3 @ran))
 
           (swap! prop assoc :foo "me")
           (r/flush)
-          (is (found-in #"hi me" div))
+          (is (= "hi me." (.-innerText div)))
           (is (= 1 @top-ran))
           (is (= 4 @ran)))))))
 
@@ -421,13 +421,13 @@
       (with-mounted-component [parent]
         (fn [C div]
           (swap! ran inc)
-          (is (found-in #"hi you" div))
+          (is (= "hi you." (.-innerText div)))
           (is (= 1 @top-ran))
           (is (= 3 @ran))
 
           (swap! prop assoc :foo "me")
           (r/flush)
-          (is (found-in #"hi me" div))
+          (is (= "hi me." (.-innerText div)))
           (is (= 1 @top-ran))
           (is (= 4 @ran)))))))
 
@@ -1316,10 +1316,10 @@
                       [pure-component {:value @prop}])]
       (with-mounted-component [component]
         (fn [c div]
-          (is (found-in #"Value foo" div))
+          (is (= "Value foo" (.-innerText div)))
           (swap! prop inc)
           (r/flush)
-          (is (found-in #"Value foo foo" div)))))))
+          (is (= "Value foo foo" (.-innerText div))))))))
 
 (deftest get-derived-state-from-error-test
   (when r/is-client
@@ -1342,10 +1342,10 @@
         (wrap-capture-console-error
           #(with-mounted-component [component [bad-component]]
              (fn [c div]
-               (is (found-in #"Ok" div))
+               (is (= "Ok" (.-innerText div)))
                (swap! prop inc)
                (r/flush)
-               (is (found-in #"Error" div)))))))))
+               (is (= "Error" (.-innerText div))))))))))
 
 (deftest get-snapshot-before-update-test
   (when r/is-client
@@ -1369,7 +1369,7 @@
         (fn [c div]
           ;; Attach to DOM to get real height value
           (.appendChild js/document.body div)
-          (is (found-in #"foo" div))
+          (is (= "foo" (.-innerText div)))
           (swap! prop inc)
           (r/flush)
           (is (= {:height 20} @did-update))
@@ -1409,7 +1409,7 @@
         (with-mounted-component [:< c "foo"]
           (fn [c div]
             (is (nil? c) "Render returns nil for stateless components")
-            (is (found-in #"Hello foo" div)))))))
+            (is (= "Hello foo" (.-innerText div))))))))
 
 (deftest functional-component-poc-state-hook
   (when r/is-client
