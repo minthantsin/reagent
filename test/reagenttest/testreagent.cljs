@@ -145,7 +145,7 @@
           v2 (r/atom 0)
           c2 (fn [{val :val}]
                (swap! ran inc)
-               (is (= val @v1))
+               (is (= @v1 val))
                [:div @v2])
           c1 (fn []
                (swap! ran inc)
@@ -175,13 +175,17 @@
 (deftest init-state-test
   (when r/is-client
     (let [ran (r/atom 0)
-          really-simple (fn []
-                          (let [this (r/current-component)]
-                            (swap! ran inc)
-                            (r/set-state this {:foo "foobar"})
-                            (fn []
-                              [:div (str "this is "
-                                         (:foo (r/state this)))])))]
+          really-simple
+          ;; NOTE: Manually marking the following component as stateful.
+          ;; TODO: Should maybe just use create-class here.
+          ^:class-component
+          (fn []
+            (let [this (r/current-component)]
+              (swap! ran inc)
+              (r/set-state this {:foo "foobar"})
+              (fn []
+                [:div (str "this is "
+                           (:foo (r/state this)))])))]
       (with-mounted-component [really-simple nil nil]
         (fn [c div]
           (swap! ran inc)
@@ -198,9 +202,9 @@
           child (fn [p]
                   (swap! child-ran inc)
                   [:div (:val p)])
-          parent(fn []
-                  (swap! parent-ran inc)
-                  [:div "child-foo" [child @child-props]])]
+          parent (fn []
+                   (swap! parent-ran inc)
+                   [:div "child-foo" [child @child-props]])]
       (with-mounted-component [parent nil nil]
         (fn [c div]
           (is (= 1 @child-ran))
@@ -1123,12 +1127,14 @@
         (is (nil? (r/flush)))
         (is (= 1 @val))
         (is (= 2 @spy))
-        (is (nil? (r/force-update c)))
-        (is (= 3 @spy))
-        (is (nil? (r/next-tick #(reset! spy 0))))
-        (is (= 3 @spy))
-        (r/flush)
-        (is (= 0 @spy))))
+        ;; TODO: Functional component can't be force updated from the outside
+        ; (is (nil? (r/force-update c)))
+        ; (is (= 3 @spy))
+        ; (is (nil? (r/next-tick #(reset! spy 0))))
+        ; (is (= 3 @spy))
+        ; (r/flush)
+        ; (is (= 0 @spy))
+        ))
     (is (= nil @node))))
 
 (deftest style-property-names-are-camel-cased
