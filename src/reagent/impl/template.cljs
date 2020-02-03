@@ -294,6 +294,27 @@
       (set! (.-key jsprops) key))
     (react/createElement c jsprops)))
 
+(defn reag-fun-element [v]
+  (let [tag (nth v 1)
+        props (nth v 2 nil)
+        has-props (or (nil? props) (map? props))
+        jsprops (or (convert-prop-value (if has-props props))
+                    #js {})
+        first-child (+ 2 (if has-props 1 0))
+        c (fn [jsprops]
+            ;; TODO: Create state hook for RAtom state and force-update)
+            (let [children (.-children jsprops)
+                  children (if (array? children) children #js [children])
+                  res (apply tag (drop 2 v))]
+              (as-element res)))
+        args (reduce-kv (fn [a k v]
+                          (when (>= k first-child)
+                            (.push a (as-element v)))
+                          a)
+                        #js [c jsprops]
+                        v)]
+    (.apply react/createElement nil args)))
+
 (defn fragment-element [argv]
   (let [props (nth argv 1 nil)
         hasprops (or (nil? props) (map? props))
@@ -354,6 +375,9 @@
     (cond
       (keyword-identical? :<> tag)
       (fragment-element v)
+
+      (keyword-identical? :< tag)
+      (reag-fun-element v)
 
       (hiccup-tag? tag)
       (let [n (name tag)

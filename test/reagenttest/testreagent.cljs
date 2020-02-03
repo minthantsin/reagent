@@ -1398,3 +1398,27 @@
           (reset! val 0)
           (r/flush)
           (is (= 3 @render)))))))
+
+(deftest functional-component-poc
+  (when r/is-client
+    (testing "Simple hiccup render"
+      (let [c (fn [x]
+                [:span "Hello " x])]
+        (with-mounted-component [:< c "foo"]
+          (fn [c div]
+            (is (found-in #"Hello foo" div))))))
+
+    (testing "With state hook"
+      (let [;; Probably not the best idea to keep
+            ;; refernce to state hook update fn, but
+            ;; works for testing.
+            set-count! (atom nil)
+            c (fn [x]
+                (let [[c set-count] (react/useState x)]
+                  (reset! set-count! set-count)
+                  [:span "Count " c]))]
+        (with-mounted-component [:< c 5]
+          (fn [c div]
+            (is (= "Count 5" (.-innerText div)))
+            (@set-count! 6)
+            (is (= "Count 6" (.-innerText div)))))))))
