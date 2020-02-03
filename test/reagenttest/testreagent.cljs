@@ -1401,6 +1401,10 @@
 
 (deftest functional-component-poc
   (when r/is-client
+    ;; :< creates functional component for now.
+    ;; This is for testing only, hopefully functional component
+    ;; can be the default later.
+
     (testing "Simple hiccup render"
       (let [c (fn [x]
                 [:span "Hello " x])]
@@ -1421,4 +1425,15 @@
           (fn [c div]
             (is (= "Count 5" (.-innerText div)))
             (@set-count! 6)
+            (is (= "Count 6" (.-innerText div)))))))
+
+    (testing "RAtom"
+      (let [count (r/atom 5)
+            c (fn [x]
+                [:span "Count " @count])]
+        (with-mounted-component [:< c 5]
+          (fn [c div]
+            (is (= "Count 5" (.-innerText div)))
+            (reset! count 6)
+            (r/flush)
             (is (= "Count 6" (.-innerText div)))))))))

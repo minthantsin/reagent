@@ -301,11 +301,20 @@
         jsprops (or (convert-prop-value (if has-props props))
                     #js {})
         first-child (+ 2 (if has-props 1 0))
+        ;; comp/wrap-render
         c (fn [jsprops]
-            ;; TODO: Create state hook for RAtom state and force-update)
             (let [children (.-children jsprops)
                   children (if (array? children) children #js [children])
-                  res (apply tag (drop 2 v))]
+                  ;; comp/static-fns :render
+                  res (if util/*non-reactive*
+                        (apply tag (drop 2 v))
+                        (let [[update-count set-update-count] (react/useState 0)
+                              ;; Create JS object to store Render Atom.
+                              ;; Also mock forceUpdate Component method which is backed by the
+                              ;; state hook.
+                              obj #js {:forceUpdate (fn []
+                                                      (set-update-count (inc update-count)))}]
+                          (ratom/run-in-reaction #(apply tag (drop 2 v)) obj "ratom" batch/queue-render {:no-cache true})))]
               (as-element res)))
         args (reduce-kv (fn [a k v]
                           (when (>= k first-child)
